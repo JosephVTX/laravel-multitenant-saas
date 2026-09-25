@@ -9,7 +9,11 @@ php artisan view:cache >/dev/null 2>&1 || true
 
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     echo "Running database migrations..."
-    php artisan migrate --force
+    if [ "${RUN_SEED:-true}" = "true" ]; then
+        php artisan migrate --force --seed
+    else
+        php artisan migrate --force
+    fi
 fi
 
 if [ "${RUN_STORAGE_LINK:-false}" = "true" ]; then

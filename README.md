@@ -199,10 +199,12 @@ The repo ships a multi-stage `Dockerfile` (FrankenPHP + Octane, PHP 8.4) and
    SUPER_ADMIN_PASSWORD=<strong password>
 
    RUN_MIGRATIONS=true
+   RUN_SEED=true
    ```
 
-   The entrypoint caches config/routes and runs `migrate --force` when
-   `RUN_MIGRATIONS=true` (set it back to `false` after the first deploy).
+   The entrypoint caches config/routes and runs `migrate --force --seed` when
+   `RUN_MIGRATIONS=true` (set it back to `false` after the first deploy; the
+   seeders are idempotent).
 4. **Domain**: point `saas.ndn.pe` (`A` record) to the Dokploy server and add it to the
    application; enable Let's Encrypt.
 
