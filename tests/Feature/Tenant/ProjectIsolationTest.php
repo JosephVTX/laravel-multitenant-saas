@@ -100,6 +100,18 @@ class ProjectIsolationTest extends TestCase
     /**
      * @return array{0: Tenant, 1: User}
      */
+    public function test_projects_can_be_filtered_by_status(): void
+    {
+        [$tenant, $user] = $this->tenantWithAdmin();
+        Project::factory()->forTenant($tenant)->active()->create();
+        Project::factory()->forTenant($tenant)->create();
+
+        $this->actingAs($user, 'api')
+            ->getJson('/api/v1/tenant/projects?filter[status]=active')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
     private function tenantWithAdmin(): array
     {
         $tenant = Tenant::factory()->create();

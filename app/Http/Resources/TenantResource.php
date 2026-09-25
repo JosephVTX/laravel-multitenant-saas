@@ -22,6 +22,8 @@ class TenantResource extends JsonResource
             'settings' => $this->settings ?? [],
             'users_count' => $this->whenCounted('users'),
             'projects_count' => $this->whenCounted('projects'),
+            'users' => $this->whenLoaded('users', fn () => UserResource::collection($this->users)),
+            'projects' => $this->whenLoaded('projects', fn () => ProjectResource::collection($this->projects)),
             'trial_ends_at' => $this->trial_ends_at?->toIso8601String(),
             'suspended_at' => $this->suspended_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

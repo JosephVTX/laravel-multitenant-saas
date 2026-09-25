@@ -70,6 +70,18 @@ class TenantManagementTest extends TestCase
             ->assertJsonPath('data.0.slug', 'beta');
     }
 
+    public function test_super_admin_can_include_related_records(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $tenant = Tenant::factory()->create();
+        User::factory()->forTenant($tenant)->create();
+
+        $this->actingAs($admin, 'api')
+            ->getJson('/api/v1/admin/tenants?include=users')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.0.users');
+    }
+
     public function test_an_unknown_filter_is_rejected(): void
     {
         $admin = User::factory()->superAdmin()->create();
