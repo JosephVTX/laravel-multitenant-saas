@@ -107,6 +107,29 @@ class AuthTest extends TestCase
             ->assertJsonPath('success', true);
     }
 
+    public function test_owner_provisioned_by_admin_can_login_and_receives_roles(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin, 'api')->postJson('/api/v1/admin/tenants', [
+            'name' => 'Acme Corp',
+            'owner' => [
+                'name' => 'Acme Owner',
+                'email' => 'owner@acme.test',
+                'password' => 'secret-password',
+            ],
+        ])->assertCreated();
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => 'owner@acme.test',
+            'password' => 'secret-password',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.user.email', 'owner@acme.test')
+            ->assertJsonPath('data.user.roles', ['tenant-admin']);
+    }
+
     private function assignRole(User $user, Tenant $tenant, string $role): void
     {
         app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->getKey());

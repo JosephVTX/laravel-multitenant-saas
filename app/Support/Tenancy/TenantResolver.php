@@ -11,6 +11,11 @@ use Illuminate\Contracts\Cache\Repository;
  */
 final class TenantResolver
 {
+    /**
+     * Bump when the cached payload shape changes so stale entries are ignored.
+     */
+    private const CACHE_VERSION = 2;
+
     public function __construct(private readonly Repository $cache) {}
 
     public function findById(int|string $id): ?Tenant
@@ -56,12 +61,16 @@ final class TenantResolver
 
     public function forget(Tenant $tenant): void
     {
-        $this->cache->forget("id:{$tenant->getKey()}");
-        $this->cache->forget("uuid:{$tenant->uuid}");
-        $this->cache->forget("slug:{$tenant->slug}");
+        $this->cache->forget($this->cacheKey("id:{$tenant->getKey()}"));
+        $this->cache->forget($this->cacheKey("uuid:{$tenant->uuid}"));
+        $this->cache->forget($this->cacheKey("slug:{$tenant->slug}"));
     }
 
     /**
+     * Cache the tenant's raw attributes (never the serialized model) and
+     * rehydrate a detached model from cache, so a resolution never costs a
+     * database query while staying safe across Octane workers.
+     *
      * @param  Closure(): ?Tenant  $callback
      */
     private function remember(string $key, Closure $callback): ?Tenant
@@ -72,15 +81,27 @@ final class TenantResolver
             return $callback();
         }
 
-        return $this->cache->remember(
+        $payload = $this->cache->remember(
             $this->cacheKey($key),
             now()->addSeconds($ttl),
-            $callback,
+            fn (): array => ($tenant = $callback())
+                ? ['found' => true, 'attributes' => $tenant->getAttributes()]
+                : ['found' => false],
         );
+
+        if (! is_array($payload) || ($payload['found'] ?? false) !== true || ! isset($payload['attributes'])) {
+            return null;
+        }
+
+        $tenant = new Tenant;
+        $tenant->setRawAttributes($payload['attributes'], true);
+        $tenant->exists = true;
+
+        return $tenant;
     }
 
     private function cacheKey(string $key): string
     {
-        return config('tenancy.cache.prefix', 'tenant').':resolve:'.$key;
+        return config('tenancy.cache.prefix', 'tenant').':resolve:v'.self::CACHE_VERSION.':'.$key;
     }
 }
